@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
+        integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
+    <style>
+        .highlight {
+            box-shadow: inset 0 0 3px 3px yellow;
+        }
+
+        .gray {
+            background: #696969 !important;
+        }
+    </style>
+    <title>Chess</title>
+</head>
+
+<body>
+
+    <div id="board" style="width: 400px"></div>
+    <div id="turn">White</div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"
+        integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous">
+    </script>
+
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
+        integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous">
+    </script>
+
+    <script src="/function.js"></script>
+
+    <script>
+        // Defined Variabel
+        let turn = "white";
+        let backMove = false;
+        let hasHighlight = false;
+        let squareHighlighted;
+        let history = [];
+        let positionNow;
+        const tagBoard = "board";
+
+
+        const movePiece = (move, position) => {
+            position = {
+                ...position
+            };
+            if ("remove" in move)
+                delete position[move.remove];
+            let piece = position[move.from];
+            delete position[move.from];
+            position[move.to] = piece;
+
+            if ('promote' in move) {
+                if (piece[0] == "w") piece = "wQ";
+                else piece = "bQ";
+                position[move.to] = piece;
+            }
+            return position;
+        }
+
+        // Function for Event Handler
+        const onDrop = (source, target, piece, newPos, oldPos, orientation) => {
+            if (Chessboard.objToFen(newPos) !== Chessboard.objToFen(oldPos)) {
+                const moves = getMoves(source, piece);
+                if (!isValidMove(source, target, moves))
+                    return 'snapback';
+
+                const move = moves.filter(m => m.to == target)[0];
+                const newPosition = movePiece(move, oldPos);
+                positionNow = newPosition;
+                board.position(newPosition, false);
+                if (move['remove']) {
+                    removeGreySquares();
+                    if (!hasAnotherEat(target, piece))
+                        changeTurn();
+                } else
+                    window.setTimeout(changeTurn, 500);
+                history.push(move);
+                return 'trash';
+            }
+        }
+
+        const onDragStart = (source, piece, position, orientation) => canMove(piece);
+
+        const onMouseoverSquare = (square, piece) => {
+            if (piece && canMove(piece)) {
+                const moves = getMoves(square, piece);
+                if (moves.length > 0) {
+                    greySquare(square);
+                    moves.forEach(m => greySquare(m.to));
+                }
+            }
+        }
+
+        const onMouseoutSquare = () => {
+            removeGreySquares();
+        }
+
+        const getAllMoves = (turn, position) => {
+            let squarePieces = [];
+            for (let square in position) {
+                if (position[square][0] == turn[0])
+                    squarePieces.push(square);
+            }
+            return squarePieces.reduce((arr, s) => {
+                getMovesRecur(s, position[s], position)
+                    .forEach(m => arr.push(m));
+                return arr;
+            }, []);
+        }
+
+        const twoComputer = false;
+        const turnComputer = "black"
+
+        const play = () => {
+            const position = positionNow;
+            let allMoves = getAllMoves(turn, position);
+
+            if (allMoves.length == 0)
+                console.log(`${turn} kalah!`, history);
+            else if (twoComputer || turn == turnComputer) {
+
+                // const allMoves2 = allMoves
+                //     .filter(m => "remove" in m);
+                // if (allMoves2.length > 0)
+                //     allMoves = allMoves2;
+
+                // let randomIdx = Math.floor(Math.random() * allMoves.length)
+                // const move = allMoves[randomIdx];
+                let move, value;
+                jumlah = 0;
+                const alpha = Number.NEGATIVE_INFINITY;
+                const beta = Number.POSITIVE_INFINITY;
+                if (turn == "white")
+                    [move, value] = minmax(positionNow, 4, alpha, beta, true, 0, turn, turn)
+                else
+                    [move, value] = minmax(positionNow, 6, alpha, beta, true, 0, turn, turn)
+                console.log(jumlah);
+                let newPos = {
+                    ...position
+                };
+
+                while ("nextEat" in move) {
+                    let nextEat = move["nextEat"];
+                    delete move.nextEat;
+                    newPos = movePiece(move, newPos)
+                    board.position(newPos);
+                    history.push(move);
+                    move = nextEat;
+                }
+
+                newPos = movePiece(move, newPos);
+                positionNow = newPos;
+                board.position(newPos);
+                history.push(move);
+
+                if (twoComputer) {
+                    changeTurn();
+                    window.setTimeout(play, 500);
+                } else
+                    changeTurn();
+            }
+        }
+
+        const changeTurn = () => {
+            if (turn == "white")
+                turn = "black";
+            else
+                turn = "white";
+            document.getElementById('turn').innerHTML = turn;
+
+            if (turn == turnComputer && !twoComputer)
+                window.setTimeout(play, 500);
+            else if (gameOver()) {
+                let allMoves = getAllMoves(turn, position);
+                if (allMoves.length == 0)
+                    console.log(`${turn} kalah!`, history);
+            }
+
+
+        }
+
+        const onSnapbackEnd = () => {
+            console.log("hallo");
+        }
+
+        const config = {
+            position: '1p1p1p1p/p1p1p1p1/1p1p1p1p/8/8/P1P1P1P1/1P1P1P1P/P1P1P1P1',
+            // position: "1p1p1p1p/p1p1p1p1/3p1p1p/p7/1P1P4/4P1P1/1P1P1P1P/P1P3P1",
+            // position: '8/4p1p1/1p1p4/4p3/3Q1p2/P1P14/5p2/8',
+            // position: '8/4p1p1/1p6/2p1p1p1/1P1Q1p2/2P14/1P3p2/8',
+            // position: '8/4p1p1/1p1p4/4p3/3Q1p2/P1P14/1P3p2/8',
+            // position: "8/8/3p1p2/4Q3/1P1p1p2/2p1p3/8/8",
+            // moveSpeed: 500,
+            draggable: true,
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onMouseoverSquare: onMouseoverSquare,
+            onMouseoutSquare: onMouseoutSquare,
+            onSnapbackEnd: onSnapbackEnd
+        }
+
+        const board = Chessboard(tagBoard, config);
+        positionNow = board.position();
+
+
+        const evaluateMove = (move, penambah = 0) => {
+            let sum = 0;
+            if ('remove' in move) {
+                if (move["removePiece"][1].toLowerCase() == "p")
+                    sum += 20 + penambah
+                else
+                    sum += 100 + penambah
+            }
+
+            if ('promote' in move)
+                sum += 60;
+
+            if ('nextEat' in move) {
+                sum += evaluateMove(move.nextEat);
+            }
+            return sum;
+        }
+
+        let jumlah = 0;
+        const minmax = (position, depth, alpha, beta, isMaximizingPlayer, sum, turn, color) => {
+            jumlah++;
+            let moves = getAllMoves(turn, position)
+                .reduce((arr, m) => {
+                    spreadNextEat(m)
+                        .forEach(m2 => arr.push(m2))
+                    return arr;
+                }, []);
+
+            moves.sort(function (a, b) {
+                return Math.random() - Math.random()
+            });
+
+            // console.log(moves);
+            if (depth == 0 || moves.length == 0)
+                return [null, sum];
+
+            let maxValue = Number.NEGATIVE_INFINITY;
+            let minValue = Number.POSITIVE_INFINITY;
+            let bestMove;
+            let move;
+            for (let i = 0; i < moves.length; i++) {
+                move = moves[i];
+                let newSum;
+                let newPos = position;
+                let newMove = {
+                    ...move
+                };
+                let newTurn;
+
+                if (turn == color) newSum = sum + evaluateMove(move, depth);
+                else newSum = sum - evaluateMove(move, depth);
+
+
+                while ("nextEat" in newMove) {
+                    newPos = movePiece(newMove, newPos);
+                    newMove = newMove.nextEat;
+                }
+
+                newPos = movePiece(newMove, newPos);
+
+                if (turn == "white") newTurn = "black";
+                else newTurn = "white";
+
+                const [childBestMove, childValue] = minmax(newPos, depth - 1, alpha, beta, !isMaximizingPlayer,
+                    newSum,
+                    newTurn, color);
+
+                if (isMaximizingPlayer) {
+                    if (childValue > maxValue) {
+                        maxValue = childValue;
+                        bestMove = move;
+                    }
+
+                    if (childValue > alpha) alpha = childValue;
+
+                } else {
+                    if (childValue < minValue) {
+                        minValue = childValue;
+                        bestMove = move;
+                    }
+                    if (childValue < beta) beta = childValue;
+                }
+
+                // Alpha-beta pruning
+                if (alpha >= beta) {
+                    break;
+                }
+            }
+
+
+            if (isMaximizingPlayer) {
+                return [bestMove, maxValue]
+            } else {
+                return [bestMove, minValue];
+            }
+        }
+
+        // const moves = getAllMoves("black", positionNow);
+        // console.log(minmax(positionNow, 4, true, 0, "black", "black"), jumlah);
+        // console.log(minmax(positionNow, 4, true, 0, turn, turn), jumlah);
+        // console.log(moves);
+
+        // console.log(move);
+
+
+
+        // console.log(spreadNextEat(move))
+
+        // const test = minmax(positionNow, 3, true, 0, "black", "black");
+        // console.log(test, jumlah);
+    </script>
+</body>
+
+</html>
