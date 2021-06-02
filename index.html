@@ -7,319 +7,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
         integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU" crossorigin="anonymous">
-    <style>
-        .highlight {
-            box-shadow: inset 0 0 3px 3px yellow;
-        }
-
-        .gray {
-            background: #696969 !important;
-        }
-    </style>
-    <title>Chess</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="shortcut icon" href="https://chessboardjs.com/favicon.ico" type="image/x-icon">
+    <title>Checker</title>
 </head>
 
 <body>
 
-    <div id="board" style="width: 400px"></div>
-    <div id="turn">White</div>
+    <div class="container-fluid px-5 pt-5">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <h2 class="text-center mb-0">Checkers Game AI</h2>
+                <small class="text-center d-block"><a class="btn btn-link" target="_blank"
+                        href="https://github.com/ekoptra/ai-checkers-js">Source Code</a></small>
+                <div class="my-4">
+                    <select class="form-select mb-3" id="pilihan-game">
+                        <option selected>Pilih Game</option>
+                        <option value="lawan">Lawan Komputer</option>
+                        <option value="komputer">Komputer vs Komputer</option>
+                    </select>
+                    <select class="form-select mb-3 d-none" id="level-hitam">
+                        <option selected>Pilih Level Bidak Hitam</option>
+                        <option value="1">Bidak Hitam Level 1 (Depth AI = 2)</option>
+                        <option value="2">Bidak Hitam Level 2 (Depth AI = 4)</option>
+                        <option value="3">Bidak Hitam Level 3 (Depth AI = 6)</option>
+                        <option value="4">Bidak Hitam Level 4 (Depth AI = 8)</option>
+                    </select>
+                    <select class="form-select mb-3 d-none" id="level-putih">
+                        <option selected>Pilih Level Bidak Putih</option>
+                        <option value="1">Bidak Putih Level 1 (Depth AI = 2)</option>
+                        <option value="2">Bidak Putih Level 2 (Depth AI = 4)</option>
+                        <option value="3">Bidak Putih Level 3 (Depth AI = 6)</option>
+                        <option value="4">Bidak Putih Level 4 (Depth AI = 8)</option>
+                    </select>
+                </div>
+                <div class="text-center">
+                    <button class="btn btn-success" disabled id="tombol-mulai">Mulai Permainan</button>
+                </div>
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>History Perpindahan</h5>
+                    </div>
+                    <div class="card-body" id="history">
+                        <ul class="list-group" id="list-history"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="d-flex justify-content-center">
+                    <div id="board" style="width: 400px"></div>
+                </div>
+                <div class="row mt-3 text-center">
+                    <div class="col-sm-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Giliran</h5>
+                                <p class="mb-0" id="giliran"> - </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Pemenang</h5>
+                                <p class="mb-0" id="pemenang"> - </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button class="btn btn-danger d-none" id="tombol-menyerah">Menyerah</button>
+                    <button class="btn btn-danger d-none" id="tombol-hentikan">Hentikan Permainan</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"
         integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous">
     </script>
-
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
         integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD" crossorigin="anonymous">
     </script>
-
-    <script src="/function.js"></script>
-
-    <script>
-        // Defined Variabel
-        let turn = "white";
-        let backMove = false;
-        let hasHighlight = false;
-        let squareHighlighted;
-        let history = [];
-        let positionNow;
-        const tagBoard = "board";
-
-
-        const movePiece = (move, position) => {
-            position = {
-                ...position
-            };
-            if ("remove" in move)
-                delete position[move.remove];
-            let piece = position[move.from];
-            delete position[move.from];
-            position[move.to] = piece;
-
-            if ('promote' in move) {
-                if (piece[0] == "w") piece = "wQ";
-                else piece = "bQ";
-                position[move.to] = piece;
-            }
-            return position;
-        }
-
-        // Function for Event Handler
-        const onDrop = (source, target, piece, newPos, oldPos, orientation) => {
-            if (Chessboard.objToFen(newPos) !== Chessboard.objToFen(oldPos)) {
-                const moves = getMoves(source, piece);
-                if (!isValidMove(source, target, moves))
-                    return 'snapback';
-
-                const move = moves.filter(m => m.to == target)[0];
-                const newPosition = movePiece(move, oldPos);
-                positionNow = newPosition;
-                board.position(newPosition, false);
-                if (move['remove']) {
-                    removeGreySquares();
-                    if (!hasAnotherEat(target, piece))
-                        changeTurn();
-                } else
-                    window.setTimeout(changeTurn, 500);
-                history.push(move);
-                return 'trash';
-            }
-        }
-
-        const onDragStart = (source, piece, position, orientation) => canMove(piece);
-
-        const onMouseoverSquare = (square, piece) => {
-            if (piece && canMove(piece)) {
-                const moves = getMoves(square, piece);
-                if (moves.length > 0) {
-                    greySquare(square);
-                    moves.forEach(m => greySquare(m.to));
-                }
-            }
-        }
-
-        const onMouseoutSquare = () => {
-            removeGreySquares();
-        }
-
-        const getAllMoves = (turn, position) => {
-            let squarePieces = [];
-            for (let square in position) {
-                if (position[square][0] == turn[0])
-                    squarePieces.push(square);
-            }
-            return squarePieces.reduce((arr, s) => {
-                getMovesRecur(s, position[s], position)
-                    .forEach(m => arr.push(m));
-                return arr;
-            }, []);
-        }
-
-        const twoComputer = false;
-        const turnComputer = "black"
-
-        const play = () => {
-            const position = positionNow;
-            let allMoves = getAllMoves(turn, position);
-
-            if (allMoves.length == 0)
-                console.log(`${turn} kalah!`, history);
-            else if (twoComputer || turn == turnComputer) {
-
-                // const allMoves2 = allMoves
-                //     .filter(m => "remove" in m);
-                // if (allMoves2.length > 0)
-                //     allMoves = allMoves2;
-
-                // let randomIdx = Math.floor(Math.random() * allMoves.length)
-                // const move = allMoves[randomIdx];
-                let move, value;
-                jumlah = 0;
-                const alpha = Number.NEGATIVE_INFINITY;
-                const beta = Number.POSITIVE_INFINITY;
-                if (turn == "white")
-                    [move, value] = minmax(positionNow, 4, alpha, beta, true, 0, turn, turn)
-                else
-                    [move, value] = minmax(positionNow, 6, alpha, beta, true, 0, turn, turn)
-                console.log(jumlah);
-                let newPos = {
-                    ...position
-                };
-
-                while ("nextEat" in move) {
-                    let nextEat = move["nextEat"];
-                    delete move.nextEat;
-                    newPos = movePiece(move, newPos)
-                    board.position(newPos);
-                    history.push(move);
-                    move = nextEat;
-                }
-
-                newPos = movePiece(move, newPos);
-                positionNow = newPos;
-                board.position(newPos);
-                history.push(move);
-
-                if (twoComputer) {
-                    changeTurn();
-                    window.setTimeout(play, 500);
-                } else
-                    changeTurn();
-            }
-        }
-
-        const changeTurn = () => {
-            if (turn == "white")
-                turn = "black";
-            else
-                turn = "white";
-            document.getElementById('turn').innerHTML = turn;
-
-            if (turn == turnComputer && !twoComputer)
-                window.setTimeout(play, 500);
-            else if (gameOver()) {
-                let allMoves = getAllMoves(turn, position);
-                if (allMoves.length == 0)
-                    console.log(`${turn} kalah!`, history);
-            }
-
-
-        }
-
-        const onSnapbackEnd = () => {
-            console.log("hallo");
-        }
-
-        const config = {
-            position: '1p1p1p1p/p1p1p1p1/1p1p1p1p/8/8/P1P1P1P1/1P1P1P1P/P1P1P1P1',
-            // position: "1p1p1p1p/p1p1p1p1/3p1p1p/p7/1P1P4/4P1P1/1P1P1P1P/P1P3P1",
-            // position: '8/4p1p1/1p1p4/4p3/3Q1p2/P1P14/5p2/8',
-            // position: '8/4p1p1/1p6/2p1p1p1/1P1Q1p2/2P14/1P3p2/8',
-            // position: '8/4p1p1/1p1p4/4p3/3Q1p2/P1P14/1P3p2/8',
-            // position: "8/8/3p1p2/4Q3/1P1p1p2/2p1p3/8/8",
-            // moveSpeed: 500,
-            draggable: true,
-            onDragStart: onDragStart,
-            onDrop: onDrop,
-            onMouseoverSquare: onMouseoverSquare,
-            onMouseoutSquare: onMouseoutSquare,
-            onSnapbackEnd: onSnapbackEnd
-        }
-
-        const board = Chessboard(tagBoard, config);
-        positionNow = board.position();
-
-
-        const evaluateMove = (move, penambah = 0) => {
-            let sum = 0;
-            if ('remove' in move) {
-                if (move["removePiece"][1].toLowerCase() == "p")
-                    sum += 20 + penambah
-                else
-                    sum += 100 + penambah
-            }
-
-            if ('promote' in move)
-                sum += 60;
-
-            if ('nextEat' in move) {
-                sum += evaluateMove(move.nextEat);
-            }
-            return sum;
-        }
-
-        let jumlah = 0;
-        const minmax = (position, depth, alpha, beta, isMaximizingPlayer, sum, turn, color) => {
-            jumlah++;
-            let moves = getAllMoves(turn, position)
-                .reduce((arr, m) => {
-                    spreadNextEat(m)
-                        .forEach(m2 => arr.push(m2))
-                    return arr;
-                }, []);
-
-            moves.sort(function (a, b) {
-                return Math.random() - Math.random()
-            });
-
-            // console.log(moves);
-            if (depth == 0 || moves.length == 0)
-                return [null, sum];
-
-            let maxValue = Number.NEGATIVE_INFINITY;
-            let minValue = Number.POSITIVE_INFINITY;
-            let bestMove;
-            let move;
-            for (let i = 0; i < moves.length; i++) {
-                move = moves[i];
-                let newSum;
-                let newPos = position;
-                let newMove = {
-                    ...move
-                };
-                let newTurn;
-
-                if (turn == color) newSum = sum + evaluateMove(move, depth);
-                else newSum = sum - evaluateMove(move, depth);
-
-
-                while ("nextEat" in newMove) {
-                    newPos = movePiece(newMove, newPos);
-                    newMove = newMove.nextEat;
-                }
-
-                newPos = movePiece(newMove, newPos);
-
-                if (turn == "white") newTurn = "black";
-                else newTurn = "white";
-
-                const [childBestMove, childValue] = minmax(newPos, depth - 1, alpha, beta, !isMaximizingPlayer,
-                    newSum,
-                    newTurn, color);
-
-                if (isMaximizingPlayer) {
-                    if (childValue > maxValue) {
-                        maxValue = childValue;
-                        bestMove = move;
-                    }
-
-                    if (childValue > alpha) alpha = childValue;
-
-                } else {
-                    if (childValue < minValue) {
-                        minValue = childValue;
-                        bestMove = move;
-                    }
-                    if (childValue < beta) beta = childValue;
-                }
-
-                // Alpha-beta pruning
-                if (alpha >= beta) {
-                    break;
-                }
-            }
-
-
-            if (isMaximizingPlayer) {
-                return [bestMove, maxValue]
-            } else {
-                return [bestMove, minValue];
-            }
-        }
-
-        // const moves = getAllMoves("black", positionNow);
-        // console.log(minmax(positionNow, 4, true, 0, "black", "black"), jumlah);
-        // console.log(minmax(positionNow, 4, true, 0, turn, turn), jumlah);
-        // console.log(moves);
-
-        // console.log(move);
-
-
-
-        // console.log(spreadNextEat(move))
-
-        // const test = minmax(positionNow, 3, true, 0, "black", "black");
-        // console.log(test, jumlah);
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous">
     </script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="/checkerHandler.js"></script>
+    <script src="/alpha-beta-pruning.js"></script>
+    <script src="/gameHadler.js"></script>
 </body>
 
 </html>

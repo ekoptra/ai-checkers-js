@@ -20,19 +20,16 @@ const removeHighlightSquare = () => $(`#${tagBoard} .highlight`).removeClass('hi
 // Utility Chessboard
 
 // Cek Apakah game telah berakhir atau tidak
-const gameOver = () => {
-    const position = positionNow;
-    for (const square in position) {
-        if (turn == "white" && position[square][0] == "w")
-            return false;
-        if (turn == "black" && position[square][0] == "b")
-            return false;
-    }
-    return true;
+const gameOver = (turn, position) => {
+    if (getAllMoves(turn, position).length == 0)
+        return true;
+    return false;
 }
 
 // Cek Apakah piece yang diklik bisa dipidahkan atau tidak
 const canMove = (piece) => {
+    if (!turn || twoComputer)
+        return false;
     if ((turn === 'white' && piece.search(/^w/) === -1) ||
         (turn === 'black' && piece.search(/^b/) === -1)) {
         return false
@@ -41,6 +38,8 @@ const canMove = (piece) => {
 }
 
 // Cek apakah kotak kosong
+
+
 const isEmptySquare = (square, board) => {
     if (!(square in board)) return true;
     return false;
@@ -315,4 +314,37 @@ const isPromoted = (target, pieces) => {
     if (pieces[0] == "b" && target[1] == 1)
         return true;
     return false;
+}
+
+// Pindahkan Bidak
+const movePiece = (move, position) => {
+    position = {
+        ...position
+    };
+    if ("remove" in move)
+        delete position[move.remove];
+    let piece = position[move.from];
+    delete position[move.from];
+    position[move.to] = piece;
+
+    if ('promote' in move) {
+        if (piece[0] == "w") piece = "wQ";
+        else piece = "bQ";
+        position[move.to] = piece;
+    }
+    return position;
+}
+
+// Dapatkan Semua Langkah
+const getAllMoves = (turn, position) => {
+    let squarePieces = [];
+    for (let square in position) {
+        if (position[square][0] == turn[0])
+            squarePieces.push(square);
+    }
+    return squarePieces.reduce((arr, s) => {
+        getMovesRecur(s, position[s], position)
+            .forEach(m => arr.push(m));
+        return arr;
+    }, []);
 }
