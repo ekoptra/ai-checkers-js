@@ -226,7 +226,7 @@ const playComputer = () => {
     perpindahan += `(${jumlahNode} Node Evaluasi)</li>`;
     listHistory.innerHTML = perpindahan + listHistory.innerHTML;
 
-    if (jumlahNode > 300000 && twoComputer) {
+    if (jumlahNode > 300000 && !twoComputer) {
         levelHitam -= 2;
         Swal.fire(
             'Level AI Diturunkan'
