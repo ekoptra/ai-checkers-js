@@ -19,12 +19,6 @@ const removeHighlightSquare = () => $(`#${tagBoard} .highlight`).removeClass('hi
 
 // Utility Chessboard
 
-// Cek Apakah game telah berakhir atau tidak
-const gameOver = (turn, position) => {
-    if (getAllMoves(turn, position).length == 0)
-        return true;
-    return false;
-}
 
 // Cek Apakah piece yang diklik bisa dipidahkan atau tidak
 const canMove = (piece) => {
@@ -264,9 +258,15 @@ const getMovesRecur = (square, pieces = null, currBoard = null) => {
     moves.forEach(m => {
         if ("remove" in m) {
             let newPos = movePiece(m, currBoard);
+            let newPiece = m.piece;
 
-            if (hasAnotherEat(m.to, m.piece, false)) {
-                const nextEat = getMovesRecur(m.to, pieces, newPos)
+            if ("promote" in m) {
+                if (newPiece[0] == "w") newPiece = "wQ";
+                else newPiece = "bQ";
+            }
+
+            if (hasAnotherEat(m.to, newPiece, false, newPos)) {
+                const nextEat = getMovesRecur(m.to, newPiece, newPos)
                     .filter(m2 => "remove" in m2);
 
                 if (nextEat.length > 0)
@@ -282,7 +282,7 @@ const getMovesRecur = (square, pieces = null, currBoard = null) => {
 }
 
 // Cek apakah masih ada yang bisa dimakan
-const hasAnotherEat = (square, pieces, highlightSquare2 = true) => {
+const hasAnotherEat = (square, pieces, highlightSquare2 = true, position = null) => {
 
     if (highlightSquare2)
         removeHighlightSquare();
@@ -292,7 +292,7 @@ const hasAnotherEat = (square, pieces, highlightSquare2 = true) => {
     if (highlightSquare2)
         highlightSquare(square);
     hasHighlight = true;
-    const moves = getMoves(square, pieces);
+    const moves = getMoves(square, pieces, position);
 
     if (moves.length == 0) {
         squareHighlighted = undefined;
@@ -342,9 +342,16 @@ const getAllMoves = (turn, position) => {
         if (position[square][0] == turn[0])
             squarePieces.push(square);
     }
-    return squarePieces.reduce((arr, s) => {
+    let hasRemove = false;
+    let moves = squarePieces.reduce((arr, s) => {
         getMovesRecur(s, position[s], position)
-            .forEach(m => arr.push(m));
+            .forEach(m => {
+                arr.push(m);
+                if ("remove" in m) hasRemove = true;
+            });
         return arr;
     }, []);
+    if (hasRemove)
+        moves = moves.filter(m => "remove" in m);
+    return moves;
 }

@@ -4,14 +4,14 @@ const evaluateMove = (move, penambah = 0) => {
         if (move["removePiece"][1].toLowerCase() == "p")
             sum += 20 + penambah
         else
-            sum += 100 + penambah
+            sum += 60 + penambah
     }
 
     if ('promote' in move)
-        sum += 60;
+        sum += 40;
 
     if ('nextEat' in move) {
-        sum += evaluateMove(move.nextEat, penambah);
+        sum += evaluateMove(move.nextEat);
     }
     return sum;
 }
@@ -30,6 +30,7 @@ const minmax = (position, depth, alpha, beta, isMaximizingPlayer, sum, turn, col
     });
 
     // console.log(moves);
+
     if (depth == 0 || moves.length == 0)
         return [null, sum];
 
@@ -46,9 +47,6 @@ const minmax = (position, depth, alpha, beta, isMaximizingPlayer, sum, turn, col
         };
         let newTurn;
 
-        if (turn == color) newSum = sum + evaluateMove(move, depth);
-        else newSum = sum - evaluateMove(move, depth);
-
 
         while ("nextEat" in newMove) {
             newPos = movePiece(newMove, newPos);
@@ -56,6 +54,25 @@ const minmax = (position, depth, alpha, beta, isMaximizingPlayer, sum, turn, col
         }
 
         newPos = movePiece(newMove, newPos);
+
+        if (turn == color) {
+            newSum = sum + evaluateMove(move, depth);
+        }
+        else {
+            newSum = sum - evaluateMove(move, depth);
+        }
+
+        if (move['piece'][1].toLowerCase() == "p") {
+            if (move['from'][1] == 1 && turn == color && turn == "white")
+                newSum -= 10;
+            else
+                newSum += 10;
+
+            if (move['from'][1] == 8 && turn == color && turn == "black")
+                newSum -= 10;
+            else
+                newSum += 10;
+        }
 
         if (turn == "white") newTurn = "black";
         else newTurn = "white";

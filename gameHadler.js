@@ -1,5 +1,5 @@
 // Pilihan Jenis Game
-let pilihanGame, levelHitam, levelPutih;
+let pilihanGame, levelHitam, levelPutih, allMovesNow;
 const pilihanGameForm = document.getElementById('pilihan-game');
 const levelHitamForm = document.getElementById('level-hitam');
 const levelPutihForm = document.getElementById('level-putih');
@@ -14,6 +14,7 @@ const listHistory = document.getElementById('list-history');
 let turn, backMove, hasHighlight, squareHighlighted, history, positionNow, twoComputer, jumlahNode, timeOut;
 const tagBoard = "board";
 const turnComputer = "black";
+// const initialPosition = "7Q/8/8/8/8/q7/8/q1Q5";
 const initialPosition = '1p1p1p1p/p1p1p1p1/1p1p1p1p/8/8/P1P1P1P1/1P1P1P1P/P1P1P1P1';
 
 // Fungsi Untuk Memilih Game
@@ -53,14 +54,21 @@ levelPutihForm.addEventListener('change', () => {
 });
 
 
-const hentikanGame = () => {
+const hentikanGame = (adaPemenang = false) => {
     tombolMenyerah.classList.add('d-none');
     tombolhentikan.classList.add('d-none');
     turn = null;
     tombolMulai.disabled = false;
-    Swal.fire(
-        'Permainan dihentikan'
-    )
+    if (adaPemenang) {
+        Swal.fire(
+            'Permainan selesai'
+        )
+    } else {
+        Swal.fire(
+            'Permainan dihentikan'
+        )
+    }
+
 };
 
 tombolMenyerah.addEventListener('click', () => {
@@ -75,7 +83,7 @@ tombolMenyerah.addEventListener('click', () => {
     }).then((result) => {
         if (result.isConfirmed) {
             hentikanGame();
-            pemenang.innerHTML = `Bidak Hitam (AI Level ${levelHitam})`
+            pemenang.innerHTML = `Bidak Hitam (AI Depth ${levelHitam})`
         }
     });
 });
@@ -100,11 +108,11 @@ tombolhentikan.addEventListener('click', () => {
 // Function for Event Handler
 const onDrop = (source, target, piece, newPos, oldPos, orientation) => {
     if (Chessboard.objToFen(newPos) !== Chessboard.objToFen(oldPos)) {
-        const moves = getMoves(source, piece);
+        const moves = [...allMovesNow];
         if (!isValidMove(source, target, moves))
             return 'snapback';
 
-        const move = moves.filter(m => m.to == target)[0];
+        const move = moves.filter(m => m.to == target && m.from == source)[0];
         const newPosition = movePiece(move, oldPos);
         positionNow = newPosition;
         board.position(newPosition, false);
@@ -114,6 +122,8 @@ const onDrop = (source, target, piece, newPos, oldPos, orientation) => {
         if (move['remove']) {
             if (!hasAnotherEat(target, piece))
                 changeTurn();
+            else
+                allMovesNow = getAllMoves(turn, positionNow).filter(m => m.from == target);
         } else
             changeTurn();
 
@@ -127,7 +137,7 @@ const onDragStart = (source, piece, position, orientation) => canMove(piece);
 
 const onMouseoverSquare = (square, piece) => {
     if (piece && canMove(piece)) {
-        const moves = getMoves(square, piece);
+        const moves = allMovesNow.filter(m => m.from == square);
         if (moves.length > 0) {
             greySquare(square);
             moves.forEach(m => greySquare(m.to));
@@ -154,21 +164,24 @@ const changeTurn = () => {
         giliran.textContent = "Bidak Putih";
     }
 
-    if (gameOver(turn, positionNow)) {
+    allMovesNow = getAllMoves(turn, positionNow);
+
+    removeHighlightSquare();
+    allMovesNow.forEach(m => {
+        if ("remove" in m)
+            highlightSquare(m.from);
+    })
+
+    if (allMovesNow.length == 0) {
         if (turn == "white")
-            pemenang.textContent = `Bidak Hitam (AI Level ${levelHitam})`;
+            pemenang.textContent = `Bidak Hitam (AI Depth ${levelHitam})`;
         else if (turn == "black") {
             if (twoComputer)
-                pemenang.textContent = `Bidak Putih (AI Level ${levelPutih})`;
+                pemenang.textContent = `Bidak Putih (AI Depth ${levelPutih})`;
             else
                 pemenang.textContent = "Bidak Putih";
         }
-        turn = null;
-
-        Swal.fire(
-            'Permainan Selesai'
-        );
-
+        hentikanGame(true);
     } else if (turn == turnComputer || twoComputer)
         timeOut = window.setTimeout(playComputer, 500);
 }
@@ -182,10 +195,10 @@ const playComputer = () => {
     const beta = Number.POSITIVE_INFINITY;
 
     if (turn == "white") {
-        [move, value] = minmax(positionNow, levelPutih * 2, alpha, beta, true, 0, turn, turn);
+        [move, value] = minmax(positionNow, levelPutih, alpha, beta, true, 0, turn, turn);
         perpindahan += '<li class="list-group-item">Bidak Putih : '
     } else {
-        [move, value] = minmax(positionNow, levelHitam * 2, alpha, beta, true, 0, turn, turn);
+        [move, value] = minmax(positionNow, levelHitam, alpha, beta, true, 0, turn, turn);
         perpindahan +=
             '<li class="list-group-item list-group-item-dark">Bidak Hitam : '
     }
@@ -212,6 +225,13 @@ const playComputer = () => {
 
     perpindahan += `(${jumlahNode} Node Evaluasi)</li>`;
     listHistory.innerHTML = perpindahan + listHistory.innerHTML;
+
+    if (jumlahNode > 300000 && twoComputer) {
+        levelHitam -= 2;
+        Swal.fire(
+            'Level AI Diturunkan'
+        )
+    }
 
     changeTurn();
 }
@@ -252,6 +272,7 @@ tombolMulai.addEventListener('click', () => {
     squareHighlighted = null;
     board.position(initialPosition);
     positionNow = board.position();
+    allMovesNow = getAllMoves(turn, positionNow);
 
     if (twoComputer)
         timeOut = window.setTimeout(playComputer, 500);
