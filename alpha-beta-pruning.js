@@ -31,6 +31,15 @@ const minmax = (position, depth, alpha, beta, isMaximizingPlayer, sum, turn, col
 
     // console.log(moves);
 
+
+    // if (moves.length == 0) {
+    //     console.log('masuk');
+    //     if (color == turn)
+    //         return [null, sum - 10];
+    //     else
+    //         return [null, sum + 10]
+    // }
+
     if (depth == 0 || moves.length == 0)
         return [null, sum];
 

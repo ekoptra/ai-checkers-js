@@ -1,5 +1,5 @@
 // Pilihan Jenis Game
-let pilihanGame, levelHitam, levelPutih, allMovesNow;
+let pilihanGame, levelHitam, levelPutih, allMovesNow, waktuMulaiGame, lamanyaPermainan;
 const pilihanGameForm = document.getElementById('pilihan-game');
 const levelHitamForm = document.getElementById('level-hitam');
 const levelPutihForm = document.getElementById('level-putih');
@@ -9,13 +9,14 @@ const tombolhentikan = document.getElementById('tombol-hentikan');
 const giliran = document.getElementById('giliran');
 const pemenang = document.getElementById('pemenang');
 const listHistory = document.getElementById('list-history');
+const lamaBermain = document.querySelector('.lama-bermain');
 
 // Variabel Untuk Game
 let turn, backMove, hasHighlight, squareHighlighted, history, positionNow, twoComputer, jumlahNode, timeOut;
 const tagBoard = "board";
 const turnComputer = "black";
-// const initialPosition = "7Q/8/8/8/8/q7/8/q1Q5";
 const initialPosition = '1p1p1p1p/p1p1p1p1/1p1p1p1p/8/8/P1P1P1P1/1P1P1P1P/P1P1P1P1';
+// const initialPosition = "1Q5Q/8/7P/8/8/p7/8/q5q1";
 
 // Fungsi Untuk Memilih Game
 const checkTombolMulai = () => {
@@ -53,6 +54,13 @@ levelPutihForm.addEventListener('change', () => {
     checkTombolMulai();
 });
 
+const downloadHistory = () => {
+    var a = document.createElement("a");
+    var file = new Blob([JSON.stringify(history)], { type: 'application/json' });
+    a.href = URL.createObjectURL(file);
+    a.download = "history.json";
+    a.click();
+}
 
 const hentikanGame = (adaPemenang = false) => {
     tombolMenyerah.classList.add('d-none');
@@ -68,7 +76,13 @@ const hentikanGame = (adaPemenang = false) => {
             'Permainan dihentikan'
         )
     }
+    lamanyaPermainan = (new Date().getTime()) - waktuMulaiGame;
+    lamaBermain.textContent = `(Permainan berlangsung selama ${lamanyaPermainan / 1000} detik)`;
 
+    pilihanGameForm.disabled = false;
+    levelHitamForm.disabled = false;
+    levelPutihForm.disabled = false;
+    clearTimeout(timeOut);
 };
 
 tombolMenyerah.addEventListener('click', () => {
@@ -99,7 +113,6 @@ tombolhentikan.addEventListener('click', () => {
         cancelButtonText: 'Tidak!'
     }).then((result) => {
         if (result.isConfirmed) {
-            clearTimeout(timeOut);
             hentikanGame();
         }
     });
@@ -188,12 +201,13 @@ const changeTurn = () => {
 
 const playComputer = () => {
     jumlahNode = 0;
-    let move, value;
+    let move, value, lamaMikir;
     let perpindahan = "";
     const position = positionNow;
     const alpha = Number.NEGATIVE_INFINITY;
     const beta = Number.POSITIVE_INFINITY;
 
+    lamaMikir = new Date().getTime();
     if (turn == "white") {
         [move, value] = minmax(positionNow, levelPutih, alpha, beta, true, 0, turn, turn);
         perpindahan += '<li class="list-group-item">Bidak Putih : '
@@ -202,10 +216,14 @@ const playComputer = () => {
         perpindahan +=
             '<li class="list-group-item list-group-item-dark">Bidak Hitam : '
     }
+    lamaMikir = (new Date().getTime()) - lamaMikir;
 
     let newPos = {
         ...position
     };
+
+    move['jumlahNode'] = jumlahNode;
+    move['waktu'] = lamaMikir;
 
     while ("nextEat" in move) {
         let nextEat = move["nextEat"];
@@ -223,16 +241,16 @@ const playComputer = () => {
     board.position(newPos);
     history.push(move);
 
-    perpindahan += `(${jumlahNode} Node Evaluasi)</li>`;
+    perpindahan += `(${jumlahNode} Node Evaluasi ${lamaMikir / 1000} detik)</li>`;
     listHistory.innerHTML = perpindahan + listHistory.innerHTML;
 
-    if (jumlahNode > 300000 && !twoComputer) {
+    if (jumlahNode > 600000) {
         levelHitam -= 2;
+        levelPutih -= 2;
         Swal.fire(
             'Level AI Diturunkan'
         )
     }
-
     changeTurn();
 }
 
@@ -273,6 +291,13 @@ tombolMulai.addEventListener('click', () => {
     board.position(initialPosition);
     positionNow = board.position();
     allMovesNow = getAllMoves(turn, positionNow);
+
+    pilihanGameForm.disabled = true;
+    levelHitamForm.disabled = true;
+    levelPutihForm.disabled = true;
+
+    lamaBermain.textContent = "";
+    waktuMulaiGame = new Date().getTime();
 
     if (twoComputer)
         timeOut = window.setTimeout(playComputer, 500);
